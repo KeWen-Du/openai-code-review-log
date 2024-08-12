@@ -1,0 +1,273 @@
+### 代码变更记录 git diff
+diff --git a/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/OpenAiCodeReview.java b/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/OpenAiCodeReview.java
+index bec4f78..bb363c2 100644
+--- a/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/OpenAiCodeReview.java
++++ b/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/OpenAiCodeReview.java
+@@ -42,7 +42,7 @@ public class OpenAiCodeReview {
+         logger.info("openai-code-review done!");
+     }
+ 
+-    public static String getEnv(String key) {
++    private static String getEnv(String key) {
+         String value = System.getenv(key);
+         if (null == value || value.isEmpty()) {
+             throw new RuntimeException(key + " value is null");
+diff --git a/openai-code-review-sdk/src/test/java/dkw/middleware/sdk/test/ApiTest.java b/openai-code-review-sdk/src/test/java/dkw/middleware/sdk/test/ApiTest.java
+index 85913ce..fc841ea 100644
+--- a/openai-code-review-sdk/src/test/java/dkw/middleware/sdk/test/ApiTest.java
++++ b/openai-code-review-sdk/src/test/java/dkw/middleware/sdk/test/ApiTest.java
+@@ -1,22 +1,7 @@
+ package dkw.middleware.sdk.test;
+ 
+-import com.alibaba.fastjson2.JSON;
+-import dkw.middleware.sdk.infrastructure.openai.dto.ChatCompletionSyncResponseDTO;
+ import dkw.middleware.sdk.types.utils.BearerTokenUtils;
+-import dkw.middleware.sdk.types.utils.WXAccessTokenUtils;
+-import org.junit.Test;
+ 
+-import java.io.BufferedReader;
+-import java.io.InputStreamReader;
+-import java.io.OutputStream;
+-import java.net.HttpURLConnection;
+-import java.net.URL;
+-import java.nio.charset.StandardCharsets;
+-import java.util.HashMap;
+-import java.util.Map;
+-import java.util.Scanner;
+-
+-import static dkw.middleware.sdk.OpenAiCodeReview.getEnv;
+ 
+ public class ApiTest {
+ 
+@@ -26,144 +11,4 @@ public class ApiTest {
+         System.out.println(token);
+     }
+ 
+-    @Test
+-    public void test_http() throws Exception {
+-        String ak = "8751544afb8b574a2d3a717bed8bf86e.NR9C8vqi6DIhbSJh";
+-        String token = BearerTokenUtils.getToken(ak);
+-
+-        URL url = new URL("https://open.bigmodel.cn/api/paas/v4/chat/completions");
+-        HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
+-
+-        httpURLConnection.setRequestMethod("POST");
+-        httpURLConnection.setRequestProperty("Authorization", "Bearer " + token);
+-        httpURLConnection.setRequestProperty("Content-Type", "application/json");
+-        httpURLConnection.setRequestProperty("User-Agent", "Mozilla/4.0 (compatible; MSIE 5.0; Windows NT; DigExt)");
+-        httpURLConnection.setDoOutput(true);
+-
+-        String code = "1+1";
+-
+-        String jsonInpuString = "{"
+-                + "\"model\":\"glm-4-flash\","
+-                + "\"messages\": ["
+-                + "    {"
+-                + "        \"role\": \"user\","
+-                + "        \"content\": \"你是一个高级编程架构师，精通各类场景方案、架构设计和编程语言请，请您根据git diff记录，对代码做出评审。代码为: " + code + "\""
+-                + "    }"
+-                + "]"
+-                + "}";
+-
+-        try (OutputStream outputStream = httpURLConnection.getOutputStream()) {
+-            byte[] bytes = jsonInpuString.getBytes(StandardCharsets.UTF_8);
+-            outputStream.write(bytes);
+-        }
+-
+-        int responseCode = httpURLConnection.getResponseCode();
+-        System.out.println(responseCode);
+-        String responseMessage = httpURLConnection.getResponseMessage();
+-        System.out.println(responseMessage);
+-
+-        BufferedReader in = new BufferedReader(new InputStreamReader(httpURLConnection.getInputStream()));
+-        String inputLine;
+-
+-        StringBuffer content = new StringBuffer();
+-        while ((inputLine = in.readLine()) != null) {
+-            content.append(inputLine);
+-        }
+-
+-        in.close();
+-        httpURLConnection.disconnect();
+-        System.out.println(content.toString());
+-
+-
+-        ChatCompletionSyncResponseDTO response = JSON.parseObject(content.toString(), ChatCompletionSyncResponseDTO.class);
+-        System.out.println(response.getChoices().get(0).getMessage().getContent());
+-    }
+-
+-    @Test
+-    public void test_wx() {
+-        String accessToken = WXAccessTokenUtils.getAccessToken(getEnv("WEIXIN_APPID"), getEnv("WEIXIN_SECRET"));
+-        System.out.println(accessToken);
+-        Message message = new Message();
+-        message.put("repo_name", "big-market");
+-        message.put("branch_name", "feat: 新加功能");
+-        message.put("commit_author", "feat: 新加功能");
+-        message.put("commit_message", "feat: 新加功能");
+-
+-        String url = String.format("https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=%s", accessToken);
+-        System.out.println(JSON.toJSONString(message));
+-        sendPostRequest(url, JSON.toJSONString(message));
+-    }
+-
+-    private static void sendPostRequest(String urlString, String jsonBody) {
+-        try {
+-            URL url = new URL(urlString);
+-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+-            conn.setRequestMethod("POST");
+-            conn.setRequestProperty("Content-Type", "application/json; utf-8");
+-            conn.setRequestProperty("Accept", "application/json");
+-            conn.setDoOutput(true);
+-
+-            try (OutputStream os = conn.getOutputStream()) {
+-                byte[] input = jsonBody.getBytes(StandardCharsets.UTF_8);
+-                os.write(input, 0, input.length);
+-            }
+-
+-            try (Scanner scanner = new Scanner(conn.getInputStream(), StandardCharsets.UTF_8.name())) {
+-                String response = scanner.useDelimiter("\\A").next();
+-                System.out.println(response);
+-            }
+-        } catch (Exception e) {
+-            e.printStackTrace();
+-        }
+-    }
+-
+-
+-    public static class Message {
+-        private String touser = "oavof6xGr7jIjnJ6PkO_9TGKnHD0";
+-        private String template_id = "zAIi_1H4cu2Gs_G3ZuqqqwRapX1uft9AmmEaWJUsjN0";
+-        private String url = "https://github.com/KeWen-Du/openai-code-review-log/blob/master/2024-08-09/M2xJzbMqMnjK.md";
+-
+-        private Map<String, Map<String, String>> data = new HashMap<>();
+-
+-        public void put(String key, String value) {
+-            data.put(key, new HashMap<String, String>() {
+-                {
+-                    put("value", value);
+-                }
+-            });
+-        }
+-
+-        public String getTouser() {
+-            return touser;
+-        }
+-
+-        public void setTouser(String touser) {
+-            this.touser = touser;
+-        }
+-
+-        public String getTemplate_id() {
+-            return template_id;
+-        }
+-
+-        public void setTemplate_id(String template_id) {
+-            this.template_id = template_id;
+-        }
+-
+-        public String getUrl() {
+-            return url;
+-        }
+-
+-        public void setUrl(String url) {
+-            this.url = url;
+-        }
+-
+-        public Map<String, Map<String, String>> getData() {
+-            return data;
+-        }
+-
+-        public void setData(Map<String, Map<String, String>> data) {
+-            this.data = data;
+-        }
+-    }
+-
+ }
+
+
+# DKW项目： OpenAi 代码评审.
+### 😀代码评分：80
+#### 😀代码逻辑与目的：
+该代码库似乎是一个用于代码审查的SDK，包含环境变量获取、HTTP请求发送以及微信消息发送等功能。代码的主要目的是提供一个接口，允许用户与OpenAI服务进行交互，发送代码差异记录，并处理响应。
+
+#### 🤔问题点：
+1. `getEnv` 方法抛出运行时异常，这在生产环境中可能会导致整个应用程序崩溃。
+2. 测试代码中使用了硬编码的API密钥和用户信息，这不符合安全最佳实践。
+3. `test_http` 方法中使用了大量的日志输出，这可能会影响性能，尤其是在生产环境中。
+4. `Message` 类中的 `data` 字段是一个嵌套的 `HashMap`，这种设计可能导致维护困难。
+5. `sendPostRequest` 方法中的异常处理不够全面，可能会导致资源泄露。
+
+#### 🎯修改建议：
+1. 将 `getEnv` 方法的异常处理改为返回默认值或空值，避免直接抛出运行时异常。
+2. 使用配置文件或环境变量来存储敏感信息，而不是在代码中硬编码。
+3. 减少测试代码中的日志输出，或者在测试环境中设置不同的日志级别。
+4. `Message` 类中的 `data` 字段可以简化为直接使用 `Map`，减少嵌套。
+5. 在 `sendPostRequest` 方法中添加更全面的异常处理，确保所有资源被正确释放。
+
+#### 💻修改后的代码：
+```java
+// OpenAiCodeReview.java
+public class OpenAiCodeReview {
+    // ... 其他代码 ...
+
+    public static String getEnv(String key) {
+        String value = System.getenv(key);
+        if (value == null || value.isEmpty()) {
+            return null; // 或者使用默认值
+        }
+        return value;
+    }
+
+    // ... 其他代码 ...
+}
+
+// ApiTest.java
+public class ApiTest {
+    // ... 其他代码 ...
+
+    @Test
+    public void test_http() throws Exception {
+        // ... 其他代码 ...
+
+        // 使用配置文件或环境变量获取token
+        String token = BearerTokenUtils.getToken(getEnv("API_KEY"));
+
+        // ... 其他代码 ...
+    }
+
+    // ... 其他代码 ...
+
+    private static void sendPostRequest(String urlString, String jsonBody) {
+        try {
+            // ... 其他代码 ...
+
+            try (OutputStream os = conn.getOutputStream()) {
+                byte[] input = jsonBody.getBytes(StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
+            }
+
+            try (Scanner scanner = new Scanner(conn.getInputStream(), StandardCharsets.UTF_8.name())) {
+                if (scanner.hasNext()) {
+                    String response = scanner.useDelimiter("\\A").next();
+                    System.out.println(response);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            // 其他异常处理逻辑
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+    }
+
+    // ... 其他代码 ...
+}
+```
+
+#### 代码中的优点：
+- 代码结构清晰，易于阅读和理解。
+- 使用了标准的HTTP请求方法来发送数据。
+- 异常处理较为合理。
