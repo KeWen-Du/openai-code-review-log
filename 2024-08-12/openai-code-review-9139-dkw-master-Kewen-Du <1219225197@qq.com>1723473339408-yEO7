@@ -1,0 +1,159 @@
+### 代码变更记录 git diff
+diff --git a/.github/workflows/main-maven-jar.yml b/.github/workflows/main-maven-jar.yml
+index 3b85daf..1d13c93 100644
+--- a/.github/workflows/main-maven-jar.yml
++++ b/.github/workflows/main-maven-jar.yml
+@@ -3,10 +3,10 @@ name: Build and Run OpenAiCodeReview By Main Maven Jar
+ on:
+   push:
+     branches:
+-      - master
++      - master-close
+   pull_request:
+     branches:
+-      - master
++      - master-close
+ 
+ jobs:
+   build:
+diff --git a/.github/workflows/main-remote-jar.yml b/.github/workflows/main-remote-jar.yml
+new file mode 100644
+index 0000000..37a979b
+--- /dev/null
++++ b/.github/workflows/main-remote-jar.yml
+@@ -0,0 +1,73 @@
++name: Build and Run OpenAiCodeReview By Main Maven Jar
++
++on:
++  push:
++    branches:
++      - master
++  pull_request:
++    branches:
++      - master
++
++jobs:
++  build:
++    runs-on: ubuntu-latest
++
++    steps:
++      - name: Checkout repository
++        uses: actions/checkout@v2
++        with:
++          fetch-depth: 2
++
++      - name: Set up JDK 11
++        uses: actions/setup-java@v2
++        with:
++          distribution: 'adopt'
++          java-version: '11'
++
++      - name: Create libs directory
++        run: mkdir -p ./libs
++
++      - name: Download openai-code-review-sdk JAR
++        run: wget -O ./libs/openai-code-review-sdk-1.0.jar https://github.com/KeWen-Du/openai-code-review-log/releases/download/v1.0/openai-code-review-sdk-1.0.jar
++
++      - name: Get repository name
++        id: repo-name
++        run: echo "REPO_NAME=${GITHUB_REPOSITORY##*/}" >> $GITHUB_ENV
++
++      - name: Get branch name
++        id: branch-name
++        run: echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
++
++      - name: Get commit author
++        id: commit-author
++        run: echo "COMMIT_AUTHOR=$(git log -1 --pretty=format:'%an <%ae>')" >> $GITHUB_ENV
++
++      - name: Get commit message
++        id: commit-message
++        run: echo "COMMIT_MESSAGE=$(git log -1 --pretty=format:'%s')" >> $GITHUB_ENV
++
++      - name: Print repository, branch name, commit author, and commit message
++        run: |
++          echo "Repository name is ${{ env.REPO_NAME }}"
++          echo "Branch name is ${{ env.BRANCH_NAME }}"
++          echo "Commit author is ${{ env.COMMIT_AUTHOR }}"
++          echo "Commit message is ${{ env.COMMIT_MESSAGE }}"      
++
++      - name: Run Code Review
++        run: java -jar ./libs/openai-code-review-sdk-1.0.jar
++        env:
++          # Github 配置；GITHUB_REVIEW_LOG_URI「https://github.com/xfg-studio-project/openai-code-review-log」、GITHUB_TOKEN「https://github.com/settings/tokens」
++          GITHUB_REVIEW_LOG_URI: ${{ secrets.CODE_REVIEW_LOG_URI }}
++          GITHUB_TOKEN: ${{ secrets.CODE_TOKEN }}
++          COMMIT_PROJECT: ${{ env.REPO_NAME }}
++          COMMIT_BRANCH: ${{ env.BRANCH_NAME }}
++          COMMIT_AUTHOR: ${{ env.COMMIT_AUTHOR }}
++          COMMIT_MESSAGE: ${{ env.COMMIT_MESSAGE }}
++          # 微信配置 「https://mp.weixin.qq.com/debug/cgi-bin/sandboxinfo?action=showinfo&t=sandbox/index」
++          WEIXIN_APPID: ${{ secrets.WEIXIN_APPID }}
++          WEIXIN_SECRET: ${{ secrets.WEIXIN_SECRET }}
++          WEIXIN_TOUSER: ${{ secrets.WEIXIN_TOUSER }}
++          WEIXIN_TEMPLATE_ID: ${{ secrets.WEIXIN_TEMPLATE_ID }}
++          # OpenAi - ChatGLM 配置「https://open.bigmodel.cn/api/paas/v4/chat/completions」、「https://open.bigmodel.cn/usercenter/apikeys」
++          CHATGLM_APIHOST: ${{ secrets.CHATGLM_APIHOST }}
++          CHATGLM_APIKEYSECRET: ${{ secrets.CHATGLM_APIKEYSECRET }}
+\ No newline at end of file
+
+
+# DKW项目： OpenAi 代码评审.
+### 😀代码评分：80
+#### 😀代码逻辑与目的：
+该代码逻辑主要是为了在GitHub Actions中构建和运行基于Maven的OpenAi代码评审。通过配置GitHub Workflow，当有push或pull request事件发生时，触发构建和运行代码评审的过程。
+
+#### 🤔问题点：
+1. **分支限制**：在`.github/workflows/main-maven-jar.yml`中，只允许在`master`分支上进行构建，这限制了代码的测试和部署。
+2. **新的工作流**：新增的`.github/workflows/main-remote-jar.yml`工作流没有明确说明其目的和与现有工作流的关系。
+3. **环境变量配置**：环境变量配置分散且缺乏注释，难以理解其用途。
+4. **依赖管理**：直接下载jar文件而不是使用Maven仓库，可能存在版本不一致的风险。
+
+#### 🎯修改建议：
+1. **分支兼容性**：允许在`master`和`master-close`分支上进行构建。
+2. **工作流说明**：在新的工作流中添加说明，解释其目的和与现有工作流的关系。
+3. **环境变量优化**：集中配置环境变量，并添加注释说明每个变量的用途。
+4. **依赖管理**：使用Maven仓库来管理依赖，确保版本的一致性。
+
+#### 💻修改后的代码：
+```yaml
+# .github/workflows/main-maven-jar.yml
+name: Build and Run OpenAiCodeReview By Main Maven Jar
+
+on:
+  push:
+    branches:
+      - master
+      - master-close
+  pull_request:
+    branches:
+      - master
+      - master-close
+
+jobs:
+  build:
+    # ... (existing steps)
+
+# .github/workflows/main-remote-jar.yml
+name: Build and Run OpenAiCodeReview By Main Maven Jar
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    # ... (existing steps)
+    steps:
+      # ... (existing steps)
+      - name: Use Maven to download dependencies
+        run: mvn install
+```
+
+#### 代码中的优点：
+- **自动化**：通过GitHub Actions实现了代码构建和评审的自动化。
+- **环境配置**：使用环境变量来管理敏感信息，提高了安全性。
