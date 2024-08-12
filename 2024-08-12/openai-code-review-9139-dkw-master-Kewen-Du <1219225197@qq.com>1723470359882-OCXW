@@ -1,0 +1,110 @@
+### 代码变更记录 git diff
+diff --git a/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/OpenAiCodeReview.java b/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/OpenAiCodeReview.java
+index a33a482..1b423c3 100644
+--- a/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/OpenAiCodeReview.java
++++ b/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/OpenAiCodeReview.java
+@@ -67,6 +67,7 @@ public class OpenAiCodeReview {
+         if (null == value || value.isEmpty()) {
+             throw new RuntimeException(key + " value is null");
+         }
++        logger.info("getEnv|key:{},value:{}", key, value);
+         return value;
+     }
+ }
+\ No newline at end of file
+diff --git a/openai-code-review-sdk/src/test/java/dkw/middleware/sdk/test/ApiTest.java b/openai-code-review-sdk/src/test/java/dkw/middleware/sdk/test/ApiTest.java
+index 0bac0d0..a47b6f7 100644
+--- a/openai-code-review-sdk/src/test/java/dkw/middleware/sdk/test/ApiTest.java
++++ b/openai-code-review-sdk/src/test/java/dkw/middleware/sdk/test/ApiTest.java
+@@ -79,16 +79,16 @@ public class ApiTest {
+ 
+     @Test
+     public void test_wx(){
+-        String accessToken = WXAccessTokenUtils.getAccessToken();
+-        System.out.println(accessToken);
+-
+-        Message message = new Message();
+-        message.put("project","big-market");
+-        message.put("review","feat: 新加功能");
+-
+-        String url = String.format("https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=%s", accessToken);
+-        System.out.println(JSON.toJSONString(message));
+-        sendPostRequest(url, JSON.toJSONString(message));
++//        String accessToken = WXAccessTokenUtils.getAccessToken();
++//        System.out.println(accessToken);
++//
++//        Message message = new Message();
++//        message.put("project","big-market");
++//        message.put("review","feat: 新加功能");
++//
++//        String url = String.format("https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=%s", accessToken);
++//        System.out.println(JSON.toJSONString(message));
++//        sendPostRequest(url, JSON.toJSONString(message));
+     }
+ 
+     private static void sendPostRequest(String urlString, String jsonBody) {
+
+
+# DKW项目： OpenAi 代码评审.
+### 😀代码评分：85
+#### 😀代码逻辑与目的：
+该代码片段包含了对环境变量获取的封装，并在获取到空值时抛出运行时异常。同时，还有一个被注释掉的测试方法，该方法原本用于获取微信的访问令牌并发送模板消息。
+
+#### 🎯代码优点：
+- 对环境变量进行了封装，便于统一管理和维护。
+- 抛出异常提供了错误处理机制。
+
+#### 🤔问题点：
+- 测试方法中的代码被注释掉，可能不再使用但未删除，造成代码冗余。
+- 在获取环境变量后添加了日志记录，但没有考虑日志级别，可能会在生产环境中产生大量不必要的日志。
+- 缺乏对异常处理的具体情况，例如，对于`RuntimeException`，是否需要记录日志或者进行其他错误处理。
+
+#### 🎯修改建议：
+- 删除测试方法中注释掉的代码，确保测试代码的有效性。
+- 考虑设置适当的日志级别，避免在生产环境中输出过多不必要的日志。
+- 对`RuntimeException`进行适当的异常处理，例如记录日志或者根据业务需求进行其他操作。
+
+#### 💻修改后的代码：
+```java
+// OpenAiCodeReview.java
+public class OpenAiCodeReview {
+    // ... 其他代码 ...
+
+    public static String getEnv(String key) {
+        String value = System.getenv(key);
+        if (null == value || value.isEmpty()) {
+            throw new RuntimeException(key + " value is null");
+        }
+        logger.info("getEnv|key:{},value:{}", key, value);
+        return value;
+    }
+
+    // ... 其他代码 ...
+}
+
+// ApiTest.java
+public class ApiTest {
+    // ... 其他代码 ...
+
+    @Test
+    public void test_wx(){
+        // 假设WXAccessTokenUtils.getAccessToken()是一个有效的方法，且已经实现
+        String accessToken = WXAccessTokenUtils.getAccessToken();
+        System.out.println(accessToken);
+
+        Message message = new Message();
+        message.put("project","big-market");
+        message.put("review","feat: 新加功能");
+
+        String url = String.format("https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=%s", accessToken);
+        System.out.println(JSON.toJSONString(message));
+        sendPostRequest(url, JSON.toJSONString(message));
+    }
+
+    // ... 其他代码 ...
+}
+```
+
+#### 🌟代码中的优点：
+- 代码结构清晰，易于阅读和维护。
+- 方法名和变量命名合理，符合Java命名规范。
