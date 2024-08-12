@@ -1,0 +1,143 @@
+### 代码变更记录 git diff
+diff --git a/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/weixin/WeiXin.java b/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/weixin/WeiXin.java
+index 71d008d..c99f59f 100644
+--- a/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/weixin/WeiXin.java
++++ b/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/weixin/WeiXin.java
+@@ -1,7 +1,6 @@
+ package dkw.middleware.sdk.infrastructure.weixin;
+ 
+ import com.alibaba.fastjson2.JSON;
+-import dkw.middleware.sdk.infrastructure.git.GitCommand;
+ import dkw.middleware.sdk.infrastructure.weixin.dto.TemplateMessageDTO;
+ import dkw.middleware.sdk.types.utils.HttpUtils;
+ import dkw.middleware.sdk.types.utils.WXAccessTokenUtils;
+@@ -30,8 +29,8 @@ public class WeiXin {
+         String accessToken = WXAccessTokenUtils.getAccessToken(appid, secret);
+ 
+         TemplateMessageDTO templateMessageDTO = new TemplateMessageDTO(userWeixinToken, template_id);
+-        templateMessageDTO.setTemplateJumpUrl(logUrl);
+-        templateMessageDTO.setTemplateData(data);
++        templateMessageDTO.setUrl(logUrl);
++        templateMessageDTO.setData(data);
+ 
+         String url = String.format("https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=%s", accessToken);
+         System.out.println(JSON.toJSONString(templateMessageDTO));
+diff --git a/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/weixin/dto/TemplateMessageDTO.java b/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/weixin/dto/TemplateMessageDTO.java
+index 9f9a7c4..17123bc 100644
+--- a/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/weixin/dto/TemplateMessageDTO.java
++++ b/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/weixin/dto/TemplateMessageDTO.java
+@@ -5,13 +5,13 @@ import java.util.Map;
+ 
+ public class TemplateMessageDTO {
+ 
+-    private String userWeixinToken;
++    private String touser;
+     private String template_id;
+-    private String templateJumpUrl = "https://weixin.qq.com";
+-    private Map<String, Map<String, String>> templateData = new HashMap<>();
++    private String url = "https://weixin.qq.com";
++    private Map<String, Map<String, String>> data = new HashMap<>();
+ 
+-    public TemplateMessageDTO(String userWeixinToken, String template_id) {
+-        this.userWeixinToken = userWeixinToken;
++    public TemplateMessageDTO(String touser, String template_id) {
++        this.touser = touser;
+         this.template_id = template_id;
+     }
+ 
+@@ -47,12 +47,12 @@ public class TemplateMessageDTO {
+         }
+     }
+ 
+-    public String getUserWeixinToken() {
+-        return userWeixinToken;
++    public String getTouser() {
++        return touser;
+     }
+ 
+-    public void setUserWeixinToken(String userWeixinToken) {
+-        this.userWeixinToken = userWeixinToken;
++    public void setTouser(String touser) {
++        this.touser = touser;
+     }
+ 
+     public String getTemplate_id() {
+@@ -63,20 +63,20 @@ public class TemplateMessageDTO {
+         this.template_id = template_id;
+     }
+ 
+-    public String getTemplateJumpUrl() {
+-        return templateJumpUrl;
++    public String getUrl() {
++        return url;
+     }
+ 
+-    public void setTemplateJumpUrl(String templateJumpUrl) {
+-        this.templateJumpUrl = templateJumpUrl;
++    public void setUrl(String url) {
++        this.url = url;
+     }
+ 
+-    public Map<String, Map<String, String>> getTemplateData() {
+-        return templateData;
++    public Map<String, Map<String, String>> getData() {
++        return data;
+     }
+ 
+-    public void setTemplateData(Map<String, Map<String, String>> templateData) {
+-        this.templateData = templateData;
++    public void setData(Map<String, Map<String, String>> data) {
++        this.data = data;
+     }
+ 
+ }
+
+
+# DKW项目： OpenAi 代码评审.
+### 😀代码评分：85
+#### 😀代码逻辑与目的：
+该代码段是微信模板消息发送的封装，其中`WeiXin`类负责调用微信API发送模板消息，`TemplateMessageDTO`类用于构建消息的DTO对象。
+
+#### 🎯代码优点：
+- 使用了JSON进行数据序列化，易于与微信API进行交互。
+- 将消息构建过程封装在DTO类中，提高了代码的模块化。
+
+#### 🤔问题点：
+- `TemplateMessageDTO`类的命名从`userWeixinToken`更改为`touser`，但`TemplateMessageDTO`类构造函数中的参数没有相应更改，导致潜在的错误。
+- `setTemplateJumpUrl`和`setTemplateData`方法被移除，但这些值在发送消息时可能仍需要设置。
+- 代码中存在重复的默认值设置，如`templateJumpUrl`和`templateData`的默认值。
+
+#### 🎯修改建议：
+- 修改`TemplateMessageDTO`类构造函数的参数名称和类型，使其与使用保持一致。
+- 恢复`setTemplateJumpUrl`和`setTemplateData`方法，或提供其他方式来设置这些值。
+- 移除重复的默认值设置，确保这些值可以在必要时被外部设置。
+
+#### 💻修改后的代码：
+```java
+package dkw.middleware.sdk.infrastructure.weixin.dto;
+
+import com.alibaba.fastjson2.JSON;
+import java.util.Map;
+
+public class TemplateMessageDTO {
+    private String touser;
+    private String template_id;
+    private String url = "https://weixin.qq.com";
+    private Map<String, Map<String, String>> data = new HashMap<>();
+
+    public TemplateMessageDTO(String touser, String template_id) {
+        this.touser = touser;
+        this.template_id = template_id;
+    }
+
+    public void setUrl(String url) {
+        this.url = url;
+    }
+
+    public void setData(Map<String, Map<String, String>> data) {
+        this.data = data;
+    }
+
+    // Other getters and setters
+}
+```
