@@ -1,0 +1,361 @@
+### 代码变更记录 git diff
+diff --git a/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/bak/OpenAiCodeReviewBak.java b/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/bak/OpenAiCodeReviewBak.java
+deleted file mode 100644
+index 78c8199..0000000
+--- a/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/bak/OpenAiCodeReviewBak.java
++++ /dev/null
+@@ -1,164 +0,0 @@
+-package dkw.middleware.sdk.bak;
+-
+-import com.alibaba.fastjson2.JSON;
+-import dkw.middleware.sdk.infrastructure.openai.dto.ChatCompletionRequestDTO;
+-import dkw.middleware.sdk.infrastructure.openai.dto.ChatCompletionSyncResponseDTO;
+-import dkw.middleware.sdk.infrastructure.weixin.dto.TemplateMessageDTO;
+-import dkw.middleware.sdk.domain.model.Model;
+-import dkw.middleware.sdk.types.utils.BearerTokenUtils;
+-import dkw.middleware.sdk.types.utils.HttpUtils;
+-import dkw.middleware.sdk.types.utils.RandomStringUtils;
+-import dkw.middleware.sdk.types.utils.WXAccessTokenUtils;
+-import org.eclipse.jgit.api.Git;
+-import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
+-
+-import java.io.*;
+-import java.net.HttpURLConnection;
+-import java.net.URL;
+-import java.nio.charset.StandardCharsets;
+-import java.text.SimpleDateFormat;
+-import java.util.ArrayList;
+-import java.util.Date;
+-
+-
+-public class OpenAiCodeReviewBak {
+-//    public static void main(String[] args) throws Exception {
+-//        System.out.println("openai代码评审 测试执行");
+-//
+-//        String token = System.getenv("GITHUB_TOKENS");
+-//        if (null == token || token.isEmpty()) {
+-//            throw new RuntimeException("token is null");
+-//        }
+-//        //代码检出
+-//        ProcessBuilder processBuilder = new ProcessBuilder("git", "diff", "HEAD~1", "HEAD");
+-//
+-//        Process process = processBuilder.start();
+-//
+-//        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+-//        String line;
+-//
+-//        StringBuffer diffCode = new StringBuffer();
+-//        while ((line = bufferedReader.readLine()) != null) {
+-//            diffCode.append(line);
+-//        }
+-//
+-//        int exitCode = process.waitFor();
+-//        System.out.println("exit code=" + exitCode);
+-//        System.out.println("diff code=\r\n" + diffCode);
+-//
+-//        //代码评审
+-//        String log = codeReview(diffCode.toString());
+-//        System.out.println("code review log:\r\n" + log);
+-//
+-//        //写入日志
+-//        String logUrl = writeLog(token, log, diffCode.toString());
+-//        System.out.println("write log to:\r\n" + logUrl);
+-//
+-//        //消息通知
+-//        System.out.println("pushMessage：" + logUrl);
+-//        pushMessage(logUrl);
+-//
+-//    }
+-
+-    private static void pushMessage(String logUrl) {
+-        String accessToken = WXAccessTokenUtils.getAccessToken();
+-        System.out.println(accessToken);
+-
+-        TemplateMessageDTO templateMessage = new TemplateMessageDTO();
+-        templateMessage.put("project", "openai-code-review-9139-dkw");
+-        templateMessage.put("review", logUrl);
+-        templateMessage.setTemplateJumpUrl(logUrl);
+-
+-        String url = String.format("https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=%s", accessToken);
+-        System.out.println(JSON.toJSONString(templateMessage));
+-        HttpUtils.sendPostRequest(url, JSON.toJSONString(templateMessage));
+-    }
+-
+-
+-    private static String codeReview(String diffCode) throws Exception {
+-        String ak = "8751544afb8b574a2d3a717bed8bf86e.NR9C8vqi6DIhbSJh";
+-        String token = BearerTokenUtils.getToken(ak);
+-
+-        URL url = new URL("https://open.bigmodel.cn/api/paas/v4/chat/completions");
+-        HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
+-
+-        httpURLConnection.setRequestMethod("POST");
+-        httpURLConnection.setRequestProperty("Authorization", "Bearer " + token);
+-        httpURLConnection.setRequestProperty("Content-Type", "application/json");
+-        httpURLConnection.setRequestProperty("User-Agent", "Mozilla/4.0 (compatible; MSIE 5.0; Windows NT; DigExt)");
+-        httpURLConnection.setDoOutput(true);
+-
+-        ChatCompletionRequestDTO chatCompletionRequestDTO = new ChatCompletionRequestDTO();
+-        chatCompletionRequestDTO.setModel(Model.GLM_4_FLASH.getCode());
+-        chatCompletionRequestDTO.setMessages(new ArrayList<ChatCompletionRequestDTO.Prompt>() {
+-            private static final long serialVersionUID = -7988151926241837899L;
+-
+-            {
+-                add(new ChatCompletionRequestDTO.Prompt("user", "你是一个高级编程架构师，精通各类场景方案、架构设计和编程语言请，请您根据git diff记录，对代码做出评审。代码如下:"));
+-                add(new ChatCompletionRequestDTO.Prompt("user", diffCode));
+-            }
+-        });
+-
+-        try (OutputStream outputStream = httpURLConnection.getOutputStream()) {
+-            byte[] bytes = JSON.toJSONString(chatCompletionRequestDTO).getBytes(StandardCharsets.UTF_8);
+-            outputStream.write(bytes);
+-        }
+-
+-        int responseCode = httpURLConnection.getResponseCode();
+-        System.out.println(responseCode);
+-        String responseMessage = httpURLConnection.getResponseMessage();
+-        System.out.println(responseMessage);
+-
+-        BufferedReader in = new BufferedReader(new InputStreamReader(httpURLConnection.getInputStream()));
+-        String inputLine;
+-
+-        StringBuffer content = new StringBuffer();
+-        while ((inputLine = in.readLine()) != null) {
+-            content.append(inputLine);
+-        }
+-
+-        in.close();
+-        httpURLConnection.disconnect();
+-
+-        System.out.println("评审结果：" + content.toString());
+-
+-
+-        ChatCompletionSyncResponseDTO response = JSON.parseObject(content.toString(), ChatCompletionSyncResponseDTO.class);
+-        System.out.println(response.getChoices().get(0).getMessage().getContent());
+-        return response.getChoices().get(0).getMessage().getContent();
+-    }
+-
+-    private static String writeLog(String token, String log, String diffCodeStr) throws Exception {
+-
+-        Git gitRepo = Git.cloneRepository()
+-                .setURI("https://github.com/KeWen-Du/openai-code-review-log.git")
+-                .setDirectory(new File("repo"))
+-                .setCredentialsProvider(new UsernamePasswordCredentialsProvider(token, ""))
+-                .call();
+-
+-        String dateFolderName = new SimpleDateFormat("yyyy-MM-dd").format(new Date());
+-        File dateFolder = new File("repo/" + dateFolderName);
+-        if (!dateFolder.exists()) {
+-            dateFolder.mkdirs();
+-        }
+-        String fileNameStr = RandomStringUtils.generateRandomString(12) + ".md";
+-        String fileNamePre = new SimpleDateFormat("HH_mm_ss").format(new Date());
+-        String fileName = fileNamePre + "_" + fileNameStr;
+-        File newFile = new File(dateFolder, fileName);
+-
+-        try (FileWriter writer = new FileWriter(newFile)) {
+-            writer.write("### 代码变更记录 git diff\r\n");
+-            writer.write(diffCodeStr + "\r\n\r\n");
+-            writer.write(log);
+-        }
+-
+-        gitRepo.add().addFilepattern(dateFolderName + "/" + fileName).call();
+-        gitRepo.commit().setMessage("Add new file via GitHub Actions").call();
+-        gitRepo.push().setCredentialsProvider(new UsernamePasswordCredentialsProvider(token, "")).call();
+-
+-        System.out.println("Changes have been pushed to the repository.");
+-
+-        return "https://github.com/KeWen-Du/openai-code-review-log/blob/master/" + dateFolderName + "/" + fileName;
+-    }
+-
+-}
+\ No newline at end of file
+diff --git a/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/domain/service/impl/OpenAiCodeReviewService.java b/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/domain/service/impl/OpenAiCodeReviewService.java
+index 558915a..738935c 100644
+--- a/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/domain/service/impl/OpenAiCodeReviewService.java
++++ b/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/domain/service/impl/OpenAiCodeReviewService.java
+@@ -84,5 +84,7 @@ public class OpenAiCodeReviewService extends AbstractOpenAiCodeReviewService {
+         TemplateMessageDTO.put(templateData, TemplateMessageDTO.TemplateKey.BRANCH_NAME,gitCommand.getBranch());
+         TemplateMessageDTO.put(templateData, TemplateMessageDTO.TemplateKey.COMMIT_AUTHOR,gitCommand.getAuthor());
+         TemplateMessageDTO.put(templateData, TemplateMessageDTO.TemplateKey.COMMIT_MESSAGE,gitCommand.getMessage());
++
++        weiXin.sendTemplateMessage(logUrl, templateData);
+     }
+ }
+diff --git a/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/git/GitCommand.java b/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/git/GitCommand.java
+index 876cbed..796efdc 100644
+--- a/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/git/GitCommand.java
++++ b/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/git/GitCommand.java
+@@ -73,7 +73,7 @@ public class GitCommand {
+ 
+ 
+         // 创建ProcessBuilder对象，用于执行git diff命令，获取最近一次提交的差异
+-        ProcessBuilder diffProcessBuilder = new ProcessBuilder("git", "diff", lastCommitHash+"^", lastCommitHash);
++        ProcessBuilder diffProcessBuilder = new ProcessBuilder("git", "diff", lastCommitHash + "^", lastCommitHash);
+         // 设置ProcessBuilder的工作目录为当前目录
+         diffProcessBuilder.directory(new File("."));
+         // 启动进程
+@@ -93,7 +93,7 @@ public class GitCommand {
+         // 等待进程结束，并获取退出码
+         int exitCode = diffProcess.waitFor();
+         // 如果退出码不为0，表示git diff命令执行失败
+-        if (exitCode!=0) {
++        if (exitCode != 0) {
+             throw new RuntimeException("Failed to get diff, exit code:" + exitCode);
+         }
+         logger.info("diffCode:{}", diffCode);
+@@ -104,7 +104,7 @@ public class GitCommand {
+     public String writeLog(String reviewResult, String diffCodeStr) throws Exception {
+ 
+         Git gitRepo = Git.cloneRepository()
+-                .setURI(githubReviewLogUri+".git")
++                .setURI(githubReviewLogUri + ".git")
+                 .setDirectory(new File("repo"))
+                 .setCredentialsProvider(new UsernamePasswordCredentialsProvider(githubToken, ""))
+                 .call();
+@@ -115,7 +115,7 @@ public class GitCommand {
+             dateFolder.mkdirs();
+         }
+ 
+-        String fileName = project+"-"+branch+"-"+author+System.currentTimeMillis()+"-"+RandomStringUtils.generateRandomString(4);
++        String fileName = project + "-" + branch + "-" + author + System.currentTimeMillis() + "-" + RandomStringUtils.generateRandomString(4);
+         File newFile = new File(dateFolder, fileName);
+ 
+         try (FileWriter writer = new FileWriter(newFile)) {
+diff --git a/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/openai/impl/ChatGLM.java b/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/openai/impl/ChatGLM.java
+index de1bdab..d89c7d5 100644
+--- a/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/openai/impl/ChatGLM.java
++++ b/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/openai/impl/ChatGLM.java
+@@ -29,9 +29,6 @@ public class ChatGLM implements IOpenAI {
+ 
+     @Override
+     public ChatCompletionSyncResponseDTO completions(ChatCompletionRequestDTO requestDTO) throws Exception {
+-//        String ak = "8751544afb8b574a2d3a717bed8bf86e.NR9C8vqi6DIhbSJh";
+-//        URL url = new URL("https://open.bigmodel.cn/api/paas/v4/chat/completions");
+-
+         String chatGLMToken = BearerTokenUtils.getToken(apiKeySecret);
+         URL url = new URL(apiHost);
+ 
+@@ -62,7 +59,7 @@ public class ChatGLM implements IOpenAI {
+ 
+         in.close();
+         httpURLConnection.disconnect();
+-        System.out.println("评审结果：" + content.toString());
++        System.out.println("评审结果：" + content);
+ 
+ 
+         return JSON.parseObject(content.toString(), ChatCompletionSyncResponseDTO.class);
+diff --git a/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/weixin/WeiXin.java b/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/weixin/WeiXin.java
+index fb67d80..71d008d 100644
+--- a/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/weixin/WeiXin.java
++++ b/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/weixin/WeiXin.java
+@@ -1,6 +1,7 @@
+ package dkw.middleware.sdk.infrastructure.weixin;
+ 
+ import com.alibaba.fastjson2.JSON;
++import dkw.middleware.sdk.infrastructure.git.GitCommand;
+ import dkw.middleware.sdk.infrastructure.weixin.dto.TemplateMessageDTO;
+ import dkw.middleware.sdk.types.utils.HttpUtils;
+ import dkw.middleware.sdk.types.utils.WXAccessTokenUtils;
+@@ -31,8 +32,6 @@ public class WeiXin {
+         TemplateMessageDTO templateMessageDTO = new TemplateMessageDTO(userWeixinToken, template_id);
+         templateMessageDTO.setTemplateJumpUrl(logUrl);
+         templateMessageDTO.setTemplateData(data);
+-        templateMessageDTO.put("project", "openai-code-review-9139-dkw");
+-        templateMessageDTO.put("review", logUrl);
+ 
+         String url = String.format("https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=%s", accessToken);
+         System.out.println(JSON.toJSONString(templateMessageDTO));
+diff --git a/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/weixin/dto/TemplateMessageDTO.java b/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/weixin/dto/TemplateMessageDTO.java
+index 5a99bc8..12f09ee 100644
+--- a/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/weixin/dto/TemplateMessageDTO.java
++++ b/openai-code-review-sdk/src/main/java/dkw/middleware/sdk/infrastructure/weixin/dto/TemplateMessageDTO.java
+@@ -15,18 +15,6 @@ public class TemplateMessageDTO {
+         this.template_id = template_id;
+     }
+ 
+-    public TemplateMessageDTO() {
+-    }
+-
+-    public void put(String key, String value) {
+-        templateData.put(key, new HashMap<String, String>() {
+-            private static final long serialVersionUID = 7092338402387318563L;
+-
+-            {
+-                put("value", value);
+-            }
+-        });
+-    }
+ 
+     public static void put(Map<String,Map<String,String>> data,TemplateKey key,String value){
+         data.put(key.getCode(), new HashMap<String, String>() {
+
+
+# DKW项目： OpenAi 代码评审.
+### 😀代码评分：60
+#### 😀代码逻辑与目的：
+该代码库旨在实现一个代码评审系统，该系统使用OpenAI API进行代码自动评审，并通过微信发送评审结果通知。代码包括与GitHub交互、使用OpenAI API进行代码分析、记录评审日志以及发送微信通知等功能。
+
+#### 🤔问题点：
+1. **性能瓶颈**：代码中存在多个地方使用`System.getenv()`和`RandomStringUtils.generateRandomString(12)`，这些操作可能会影响性能，尤其是在高并发环境中。
+2. **逻辑缺陷**：代码中存在注释掉的测试代码和未使用的变量，这可能导致混淆和理解上的困难。
+3. **安全风险**：代码中使用明文存储和传输敏感信息（如GitHub token），这可能导致安全风险。
+4. **命名规范**：一些变量和方法命名不够清晰，难以理解其用途。
+5. **异常处理**：代码中缺乏对异常情况的适当处理，可能导致程序崩溃。
+6. **边界条件**：代码中没有对输入参数进行充分的验证，可能导致错误或安全漏洞。
+7. **资源的分配与释放**：代码中存在资源未正确释放的情况，如文件流和数据库连接。
+
+#### 🎯修改建议：
+1. **优化性能**：减少对`System.getenv()`和`RandomStringUtils.generateRandomString(12)`的调用，或使用缓存机制。
+2. **清理逻辑**：移除未使用的代码和变量，保持代码的简洁性。
+3. **增强安全性**：对敏感信息进行加密存储和传输，使用环境变量或配置文件管理密钥。
+4. **改进命名**：使用更具描述性的变量和方法名，提高代码可读性。
+5. **完善异常处理**：添加异常处理逻辑，确保程序在异常情况下能够正确处理。
+6. **验证输入**：对输入参数进行验证，确保它们满足预期条件。
+7. **资源管理**：确保所有资源在使用后被正确关闭和释放。
+
+#### 💻修改后的代码：
+由于原始代码较长且存在多个文件，以下仅提供部分代码示例的修改建议：
+
+```java
+// 优化性能：使用缓存机制
+private static final Map<String, String> tokenCache = new ConcurrentHashMap<>();
+
+public static String getToken(String apiKeySecret) {
+    return tokenCache.computeIfAbsent(apiKeySecret, k -> BearerTokenUtils.getToken(k));
+}
+
+// 清理逻辑：移除未使用的代码和变量
+// ...
+
+// 增强安全性：使用环境变量管理密钥
+// ...
+
+// 改进命名
+private static final String GITHUB_TOKEN = System.getenv("GITHUB_TOKEN");
+
+// 完善异常处理
+try (FileWriter writer = new FileWriter(newFile)) {
+    writer.write("### 代码变更记录 git diff\r\n");
+    writer.write(diffCodeStr + "\r\n\r\n");
+    writer.write(log);
+} catch (IOException e) {
+    // 处理异常
+}
+
+// 验证输入
+if (diffCodeStr == null || diffCodeStr.isEmpty()) {
+    throw new IllegalArgumentException("diffCodeStr cannot be null or empty");
+}
+
+// 资源管理
+// ...
+```
+
+#### 代码中的优点：
+- 使用了JSON库进行数据序列化和反序列化。
+- 使用了Apache HttpClient进行HTTP请求。
+- 使用了JGit进行Git操作。
+
+#### 代码的逻辑和目的：
+该代码库的主要目的是创建一个自动化代码评审系统，通过OpenAI API分析代码，并使用微信发送评审结果。代码涉及多个组件，包括与GitHub的交互、使用OpenAI API进行代码分析、记录评审日志以及发送微信通知等。
